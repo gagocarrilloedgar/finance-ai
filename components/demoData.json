@@ -1,0 +1,45 @@
+{
+  "summary": {
+    "totalEarnings": 1000,
+    "totalExpenses": 500,
+    "netAmount": 500
+  },
+  "transactions": [
+    {
+      "amount": 1000,
+      "description": "Salary",
+      "category": "Income",
+      "type": "EARNING",
+      "tags": ["Salary"],
+      "date": "2024-01-01",
+      "group": "Income"
+    },
+    {
+      "amount": 500,
+      "description": "Rent",
+      "category": "Expense",
+      "type": "EXPENSE",
+      "tags": ["Rent"],
+      "date": "2024-01-02",
+      "group": "Expense"
+    },
+    {
+      "amount": 1000,
+      "description": "Salary",
+      "category": "Income",
+      "type": "EARNING",
+      "tags": ["Salary"],
+      "date": "2024-02-01",
+      "group": "Income"
+    },
+    {
+      "amount": 500,
+      "description": "Rent",
+      "category": "Expense",
+      "type": "EXPENSE",
+      "tags": ["Rent"],
+      "date": "2024-02-01",
+      "group": "Expense"
+    }
+  ]
+}

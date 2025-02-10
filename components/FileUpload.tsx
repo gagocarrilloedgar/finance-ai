@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { DatePickerWithRange } from "@/components/ui/datepicker-with-range";
@@ -9,6 +9,8 @@ import { DateRange } from "react-day-picker";
 import { useAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { useMutation } from "@tanstack/react-query";
+import { FileUpIcon } from "lucide-react";
+import { Progress } from "./ui/progress";
 
 interface Transaction {
   amount: number;
@@ -29,52 +31,6 @@ interface AnalyzedData {
   transactions: Transaction[];
 }
 
-const mockData: AnalyzedData = {
-  summary: {
-    totalEarnings: 1000,
-    totalExpenses: 500,
-    netAmount: 500
-  },
-  transactions: [
-    {
-      amount: 1000,
-      description: "Salary",
-      category: "Income",
-      type: "EARNING",
-      tags: ["Salary"],
-      date: "2024-01-01",
-      group: "Income"
-    },
-    {
-      amount: 500,
-      description: "Rent",
-      category: "Expense",
-      type: "EXPENSE",
-      tags: ["Rent"],
-      date: "2024-01-02",
-      group: "Expense"
-    },
-    {
-      amount: 1000,
-      description: "Salary",
-      category: "Income",
-      type: "EARNING",
-      tags: ["Salary"],
-      date: "2024-02-01",
-      group: "Income"
-    },
-    {
-      amount: 500,
-      description: "Rent",
-      category: "Expense",
-      type: "EXPENSE",
-      tags: ["Rent"],
-      date: "2024-02-01",
-      group: "Expense"
-    }
-  ]
-};
-
 // Create atom with localStorage persistence
 const analyzedDataAtom = atomWithStorage<AnalyzedData | null>(
   "analyzedData",
@@ -83,21 +39,29 @@ const analyzedDataAtom = atomWithStorage<AnalyzedData | null>(
 
 export function FileUpload() {
   const [analyzedData, setAnalyzedData] = useAtom(analyzedDataAtom);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [rawData, setRawData] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [processingChunk, setProcessingChunk] = useState({
     current: 0,
     total: 0
   });
+
   const [currentMonthIndex, setCurrentMonthIndex] = useState(0);
+
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set()
+  );
 
   // Add navigation handlers
   const handleNextMonth = () => {
-    setCurrentMonthIndex(prev => Math.min(prev + 1, processedData.length - 1));
+    setCurrentMonthIndex((prev) =>
+      Math.min(prev + 1, processedData.length - 1)
+    );
   };
 
   const handlePrevMonth = () => {
-    setCurrentMonthIndex(prev => Math.max(prev - 1, 0));
+    setCurrentMonthIndex((prev) => Math.max(prev - 1, 0));
   };
 
   const { mutate: handleFileUpload, isPending } = useMutation({
@@ -118,42 +82,55 @@ export function FileUpload() {
         total: chunks.length
       });
 
-      const results = await Promise.all(
-        chunks.map(async (chunk) => {
-          const response = await fetch("/api/analyze", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ data: chunk })
-          });
-          if (!response.ok) {
-            throw new Error("Failed to analyze data");
-          }
-          return response.json();
-        })
-      );
+      const allTransactions: Transaction[] = [];
 
-      const allTransactions = results.flatMap((result) => result.transactions);
-      setAnalyzedData({
-        summary: {
-          totalEarnings: allTransactions.reduce((sum, t) => sum + t.amount, 0),
-          totalExpenses: allTransactions.reduce((sum, t) => sum + t.amount, 0),
-          netAmount: 0
-        },
-        transactions: allTransactions
+      chunks.forEach(async (chunk) => {
+        const response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ data: chunk })
+        });
+        if (!response.ok) {
+          throw new Error("Failed to analyze data");
+        }
+        const result = await response.json();
+        allTransactions.push(...result.transactions);
+        setProcessingChunk((prev) => ({
+          ...prev,
+          current: prev.current + 1
+        }));
+
+        setAnalyzedData((prev) => ({
+          ...prev,
+          summary: {
+            totalEarnings: allTransactions.reduce(
+              (sum, t) => sum + t.amount,
+              0
+            ),
+            totalExpenses: allTransactions.reduce(
+              (sum, t) => sum + t.amount,
+              0
+            ),
+            netAmount: 0
+          },
+          transactions: [...(prev?.transactions || []), ...result.transactions]
+        }));
       });
+
       toast.success("Data analyzed successfully!");
     },
     onSuccess: () => {
       toast.success("Data analyzed successfully!");
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error("Error analyzing data");
       console.error("Error processing file:", error);
     }
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const readExcelFile = (file: File): Promise<any[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -202,10 +179,45 @@ export function FileUpload() {
       }
     });
 
-    return Object.entries(grouped).sort((a, b) => b[0].localeCompare(a[0]));
+    Object.keys(grouped).forEach((monthKey) => {
+      grouped[monthKey].in.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      grouped[monthKey].out.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    });
+
+    return Object.entries(grouped).sort(
+      (a, b) =>
+        new Date(b[0] + "-01").getTime() - new Date(a[0] + "-01").getTime()
+    );
   };
 
   const processedData = processData(analyzedData);
+
+  const toggleCategory = (category: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(category)) {
+      newExpanded.delete(category);
+    } else {
+      newExpanded.add(category);
+    }
+    setExpandedCategories(newExpanded);
+  };
+
+  useEffect(() => {
+    if (processingChunk.current === processingChunk.total) {
+      setCurrentMonthIndex(0);
+    }
+    if (processingChunk.current < processingChunk.total) {
+      toast.info(
+        `Processing chunk ${processingChunk.current + 1} of ${
+          processingChunk.total
+        }`
+      );
+    }
+  }, [processingChunk]);
 
   return (
     <div className="space-y-8">
@@ -233,21 +245,7 @@ export function FileUpload() {
           className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
         >
           <div className="flex flex-col items-center justify-center pt-5 pb-6">
-            <svg
-              className="w-8 h-8 mb-4 text-gray-500"
-              aria-hidden="true"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 20 16"
-            >
-              <path
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
-              />
-            </svg>
+            <FileUpIcon className="w-6 h-6 mb-2 text-gray-500" />
             <p className="mb-2 text-sm text-gray-500">
               <span className="font-semibold">Click to upload</span> or drag and
               drop
@@ -264,6 +262,18 @@ export function FileUpload() {
           />
         </label>
       </div>
+
+      {processingChunk.total > 0 && (
+        <div className="flex flex-col gap-4 w-full text-center">
+          <p className="text-xs text-gray-500">
+            Processing chunk... {processingChunk.current} of{" "}
+            {processingChunk.total}
+          </p>
+          <Progress
+            value={(processingChunk.current / processingChunk.total) * 100}
+          />
+        </div>
+      )}
 
       {rawData.length > 0 && (
         <div className="space-y-4">
@@ -285,12 +295,12 @@ export function FileUpload() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {rawData.map((row, index) => (
                   <tr key={index}>
-                    {Object.values(row).map((value: any, cellIndex) => (
+                    {Object.values(row).map((value: unknown, cellIndex) => (
                       <td
                         key={cellIndex}
                         className="px-6 py-4 whitespace-nowrap text-sm"
                       >
-                        {value}
+                        {value as string}
                       </td>
                     ))}
                   </tr>
@@ -335,7 +345,10 @@ export function FileUpload() {
             <div className="border rounded-lg overflow-x-auto">
               <div className="min-w-full divide-y divide-gray-200">
                 {processedData.length > 0 && (
-                  <div key={processedData[currentMonthIndex][0]} className="p-4 even:bg-gray-50">
+                  <div
+                    key={processedData[currentMonthIndex][0]}
+                    className="p-4 even:bg-gray-50"
+                  >
                     <div className="flex justify-between items-center mb-2">
                       <div className="flex items-center gap-4">
                         <button
@@ -346,14 +359,18 @@ export function FileUpload() {
                           ←
                         </button>
                         <h4 className="font-medium">
-                          {new Date(processedData[currentMonthIndex][0] + "-01").toLocaleDateString("en-US", {
+                          {new Date(
+                            processedData[currentMonthIndex][0] + "-01"
+                          ).toLocaleDateString("en-US", {
                             month: "long",
                             year: "numeric"
                           })}
                         </h4>
                         <button
                           onClick={handleNextMonth}
-                          disabled={currentMonthIndex === processedData.length - 1}
+                          disabled={
+                            currentMonthIndex === processedData.length - 1
+                          }
                           className="p-2 hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           →
@@ -363,13 +380,19 @@ export function FileUpload() {
                         <div className="flex items-center gap-1">
                           <span className="text-green-600">↑</span>
                           <span className="text-green-600">
-                            ${processedData[currentMonthIndex][1].in.reduce((sum, t) => sum + t.amount, 0).toFixed(2)}
+                            $
+                            {processedData[currentMonthIndex][1].in
+                              .reduce((sum, t) => sum + t.amount, 0)
+                              .toFixed(2)}
                           </span>
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="text-red-600">↓</span>
                           <span className="text-red-600">
-                            ${processedData[currentMonthIndex][1].out.reduce((sum, t) => sum + t.amount, 0).toFixed(2)}
+                            $
+                            {processedData[currentMonthIndex][1].out
+                              .reduce((sum, t) => sum + t.amount, 0)
+                              .toFixed(2)}
                           </span>
                         </div>
                       </div>
@@ -404,51 +427,174 @@ export function FileUpload() {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {[
-                              ...processedData[currentMonthIndex][1].in,
-                              ...processedData[currentMonthIndex][1].out
-                            ].map((transaction: any, index: number) => (
-                              <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                  {transaction.description}
-                                </td>
-                                <td
-                                  className={`px-6 py-4 whitespace-nowrap text-sm ${
-                                    transaction.type === "EARNING"
-                                      ? "text-green-600"
-                                      : "text-red-600"
-                                  }`}
+                            {(() => {
+                              const transactions = [
+                                ...processedData[currentMonthIndex][1].in,
+                                ...processedData[currentMonthIndex][1].out
+                              ];
+
+                              // Group transactions by group and then by category
+                              const groups = transactions.reduce(
+                                (acc, transaction) => {
+                                  const group =
+                                    transaction.group || "Uncategorized";
+                                  if (!acc[group]) acc[group] = {};
+                                  const category =
+                                    transaction.category || "Uncategorized";
+                                  if (!acc[group][category])
+                                    acc[group][category] = [];
+                                  acc[group][category].push(transaction);
+                                  return acc;
+                                },
+                                {} as Record<
+                                  string,
+                                  Record<string, Transaction[]>
                                 >
-                                  ${transaction.amount.toFixed(2)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                  {transaction.category}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                  {transaction.type}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                  <div className="flex gap-1 flex-wrap">
-                                    {transaction.tags.map(
-                                      (tag: string, tagIndex: number) => (
-                                        <span
-                                          key={tagIndex}
-                                          className="px-2 py-1 bg-gray-100 rounded-full text-xs"
+                              );
+
+                              return Object.entries(groups).map(
+                                ([groupName, categories]) => (
+                                  <Fragment key={groupName}>
+                                    {/* Group Header */}
+                                    <tr>
+                                      <td
+                                        colSpan={7}
+                                        className="px-6 py-3 bg-gray-200"
+                                      >
+                                        <div className="flex justify-between items-center">
+                                          <span className="font-medium">
+                                            {groupName}
+                                          </span>
+                                          <span className="text-sm">
+                                            $
+                                            {Object.values(categories)
+                                              .reduce(
+                                                (sum, cat) =>
+                                                  sum +
+                                                  cat.reduce(
+                                                    (s, t) => s + t.amount,
+                                                    0
+                                                  ),
+                                                0
+                                              )
+                                              .toFixed(2)}
+                                          </span>
+                                        </div>
+                                      </td>
+                                    </tr>
+
+                                    {Object.entries(categories).map(
+                                      ([category, transactions]) => (
+                                        <Fragment
+                                          key={`${groupName}-${category}`}
                                         >
-                                          {tag}
-                                        </span>
+                                          <tr
+                                            className="cursor-pointer hover:bg-gray-50"
+                                            onClick={() =>
+                                              toggleCategory(category)
+                                            }
+                                          >
+                                            <td
+                                              colSpan={7}
+                                              className="px-6 py-3 bg-gray-100"
+                                            >
+                                              <div className="flex justify-between items-center">
+                                                <span className="font-medium">
+                                                  {category}
+                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-sm">
+                                                    $
+                                                    {transactions
+                                                      .reduce(
+                                                        (sum, t) =>
+                                                          sum + t.amount,
+                                                        0
+                                                      )
+                                                      .toFixed(2)}
+                                                  </span>
+                                                  <svg
+                                                    className={`w-4 h-4 transform transition-transform ${
+                                                      expandedCategories.has(
+                                                        category
+                                                      )
+                                                        ? "rotate-180"
+                                                        : ""
+                                                    }`}
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                  >
+                                                    <path
+                                                      strokeLinecap="round"
+                                                      strokeLinejoin="round"
+                                                      strokeWidth={2}
+                                                      d="M19 9l-7 7-7-7"
+                                                    />
+                                                  </svg>
+                                                </div>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                          {expandedCategories.has(category) &&
+                                            transactions.map(
+                                              (transaction, index) => (
+                                                <tr key={index}>
+                                                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    {transaction.description}
+                                                  </td>
+                                                  <td
+                                                    className={`px-6 py-4 whitespace-nowrap text-sm ${
+                                                      transaction.type ===
+                                                      "EARNING"
+                                                        ? "text-green-600"
+                                                        : "text-red-600"
+                                                    }`}
+                                                  >
+                                                    $
+                                                    {transaction.amount.toFixed(
+                                                      2
+                                                    )}
+                                                  </td>
+                                                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    {transaction.category}
+                                                  </td>
+                                                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    {transaction.type}
+                                                  </td>
+                                                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    <div className="flex gap-1 flex-wrap">
+                                                      {transaction.tags.map(
+                                                        (
+                                                          tag: string,
+                                                          tagIndex: number
+                                                        ) => (
+                                                          <span
+                                                            key={tagIndex}
+                                                            className="px-2 py-1 bg-gray-100 rounded-full text-xs"
+                                                          >
+                                                            {tag}
+                                                          </span>
+                                                        )
+                                                      )}
+                                                    </div>
+                                                  </td>
+                                                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    {transaction.group}
+                                                  </td>
+                                                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    {transaction.date}
+                                                  </td>
+                                                </tr>
+                                              )
+                                            )}
+                                        </Fragment>
                                       )
                                     )}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                  {transaction.group}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                  {transaction.date}
-                                </td>
-                              </tr>
-                            ))}
+                                  </Fragment>
+                                )
+                              );
+                            })()}
                           </tbody>
                         </table>
                       </div>
