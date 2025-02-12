@@ -69,8 +69,33 @@ export function FileUpload() {
       const file = event.target.files?.[0];
       if (!file) throw new Error("No file uploaded");
 
+      if (file.type === "application/pdf") {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/api/files", {
+          method: "POST",
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Server error: ${errorText}`);
+        }
+
+        const contentType = response.headers.get("content-type");
+        if (!contentType?.includes("application/json")) {
+          throw new Error("Invalid response format from server");
+        }
+
+        const data = await response.json();
+        setRawData(data);
+        return;
+      }
+
       const data = await readExcelFile(file);
       setRawData(data);
+      console.log(data);
       const chunkSize = 50;
       const chunks = [];
       for (let i = 0; i < data.length; i += chunkSize) {
@@ -102,21 +127,52 @@ export function FileUpload() {
           current: prev.current + 1
         }));
 
-        setAnalyzedData((prev) => ({
-          ...prev,
-          summary: {
-            totalEarnings: allTransactions.reduce(
-              (sum, t) => sum + t.amount,
-              0
-            ),
-            totalExpenses: allTransactions.reduce(
-              (sum, t) => sum + t.amount,
-              0
-            ),
-            netAmount: 0
-          },
-          transactions: [...(prev?.transactions || []), ...result.transactions]
-        }));
+        setAnalyzedData((prev) => {
+          const mergeTransactions = (
+            existing: Transaction[],
+            newData: Transaction[]
+          ) => {
+            const transactionMap = new Map<string, Transaction>();
+
+            // Add existing transactions to map
+            existing.forEach((t) => {
+              const key = `${t.date}-${t.description}-${t.amount}`;
+              transactionMap.set(key, t);
+            });
+
+            // Overwrite with new transactions where keys match
+            newData.forEach((t) => {
+              const key = `${t.date}-${t.description}-${t.amount}`;
+              transactionMap.set(key, t);
+            });
+
+            return Array.from(transactionMap.values());
+          };
+
+          const mergedTransactions = mergeTransactions(
+            prev?.transactions || [],
+            result.transactions
+          );
+
+          return {
+            summary: {
+              totalEarnings: mergedTransactions.reduce(
+                (sum, t) => (t.type === "EARNING" ? sum + t.amount : sum),
+                0
+              ),
+              totalExpenses: mergedTransactions.reduce(
+                (sum, t) => (t.type === "EXPENSE" ? sum + t.amount : sum),
+                0
+              ),
+              netAmount: mergedTransactions.reduce(
+                (sum, t) =>
+                  t.type === "EARNING" ? sum + t.amount : sum - t.amount,
+                0
+              )
+            },
+            transactions: mergedTransactions
+          };
+        });
       });
 
       toast.success("Data analyzed successfully!");
@@ -256,7 +312,7 @@ export function FileUpload() {
             id="dropzone-file"
             type="file"
             className="hidden"
-            accept=".xlsx,.xls,.csv"
+            accept=".xlsx,.xls,.csv,.pdf"
             onChange={handleFileUpload}
             disabled={isPending}
           />
