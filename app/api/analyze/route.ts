@@ -21,12 +21,7 @@ const groups = [
   {
     name: "Expenses",
     description:
-      "Expenses are expenses that are not necessary to maintain a certain standard of living and are not investments or savings."
-  },
-  {
-    name: "Investments & Savings",
-    description:
-      "Investments & Savings are money saved for a future goal, emergency fund, or retirement, investments, etc."
+      "Expenses are expenses that are not necessary to maintain a certain standard of living."
   },
   {
     name: "Earnings",
@@ -37,8 +32,6 @@ const groups = [
 
 export const defaultCategories = [
   "Income",
-  "Investments",
-  "Savings",
   "Housing",
   "Transportation",
   "Subscriptions",
@@ -54,14 +47,6 @@ const categoriesDescription = [
   {
     name: "Income",
     description: "Money earned from a job, or any other source that is positive"
-  },
-  {
-    name: "Investments",
-    description: "Money put into investments, stocks, bonds."
-  },
-  {
-    name: "Savings",
-    description: "Money saved for a future goal, emergency fund, or retirement"
   },
   {
     name: "Housing",
@@ -110,12 +95,15 @@ export async function POST(req: Request) {
   let allTransactions: z.infer<typeof transactionSchema>[] = [];
 
   try {
+    // Step 3: Analyze and categorize the ordered data
     const { object: result } = await generateObject({
       model: openai("gpt-4o-mini"),
       schema: z.object({
         transactions: z.array(transactionSchema)
       }),
-      prompt: `You are a financial expert specialized in categorizing bank transactions based on predefined categories and groups.
+      prompt: `You are a categorization and structuring expert. Categorize the following transactions into the appropriate categories and groups.
+
+      Output should have the same length as the input.
 
       ### Categories:
       ${categoriesDescription
@@ -125,17 +113,7 @@ export async function POST(req: Request) {
       ### Groups:
       ${groups.map((g) => `${g.name}: ${g.description}`).join("\n")}
 
-      ### Instructions:
-      - Analyze each transaction and assign it to the most appropriate category.
-      - Use transaction descriptions, amounts, and patterns to determine the category.
-      - Transactions with positive amounts should be categorized as "Income" unless they fit better under "Investments" or "Savings."
-      - Transactions related to recurring payments like Netflix or Spotify should be classified as "Subscriptions."
-      - Try to asign the transaction to a group always.
-      - Assign "type" as "EARNING" if the amount is positive and "EXPENSE" if negative.
-      - Add relevant tags based on the description (e.g., "rent", "salary", "food", "fuel").
-      - Use "group" to group related expenses (e.g., "Necessary Expenses" for rent, groceries or utilities, "Expenses" for things like clothing, entertainment, etc.).
-
-      Data to analyze: ${JSON.stringify(data, null, 2)}`
+      ### Data to Analyze: ${JSON.stringify(data, null, 2)}`
     });
 
     allTransactions = result.transactions;
@@ -143,6 +121,7 @@ export async function POST(req: Request) {
     console.error("Error processing chunk:", error);
   }
 
+  // Calculate summary
   const summary = {
     totalEarnings: allTransactions
       .filter((t) => t.type === "EARNING")
@@ -150,7 +129,7 @@ export async function POST(req: Request) {
     totalExpenses: allTransactions
       .filter((t) => t.type === "EXPENSE")
       .reduce((sum, t) => sum + t.amount, 0),
-    netAmount: 0 // Will calculate below
+    netAmount: 0
   };
   summary.netAmount = summary.totalEarnings - summary.totalExpenses;
 
