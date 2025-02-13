@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   analyzedDataAtom,
+  parsingFileAtom,
   processingChunkAtom,
   rawDataAtom,
   Transaction
@@ -17,6 +18,7 @@ export const useFileProcessing = () => {
   ];
   const setAnalyzedData = useSetAtom(analyzedDataAtom);
   const setProcessingChunk = useSetAtom(processingChunkAtom);
+  const setParsingFile = useSetAtom(parsingFileAtom);
 
   const readExcelFile = (file: File): Promise<any[]> => {
     return new Promise((resolve, reject) => {
@@ -48,21 +50,24 @@ export const useFileProcessing = () => {
     mutationFn: async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) throw new Error("No file uploaded");
+      let data: any[] = [];
 
       if (file.type === "application/pdf") {
+        setParsingFile(true);
         const formData = new FormData();
         formData.append("file", file);
         const response = await fetch("/api/files", {
           method: "POST",
           body: formData
         });
-        const data = await response.json();
+        const respData = await response.json();
+        setRawData(respData);
+        data = respData;
+        setParsingFile(false);
+      } else {
+        data = await readExcelFile(file);
         setRawData(data);
-        return;
       }
-
-      const data = await readExcelFile(file);
-      setRawData(data);
 
       const chunkSize = 50;
       const chunks = [];

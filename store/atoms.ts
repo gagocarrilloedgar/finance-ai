@@ -47,3 +47,5 @@ export const processingChunkAtom = atomWithStorage<{
   current: 0,
   total: 0
 });
+
+export const parsingFileAtom = atom<boolean>(false);

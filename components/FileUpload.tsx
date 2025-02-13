@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useAtom } from "jotai";
+import { useEffect, useState } from "react";
+import { useAtom, useAtomValue } from "jotai";
 import { toast } from "sonner";
 import { DatePickerWithRange } from "@/components/ui/datepicker-with-range";
 import { Progress } from "./ui/progress";
@@ -14,8 +14,16 @@ import {
   analyzedDataAtom,
   dateRangeAtom,
   currentMonthIndexAtom,
-  processingChunkAtom
+  processingChunkAtom,
+  parsingFileAtom
 } from "@/store/atoms";
+import { ChevronDown, Loader2 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from "./ui/collapsible";
+import { cn } from "@/lib/utils";
 
 export function FileUpload() {
   const [analyzedData] = useAtom(analyzedDataAtom);
@@ -24,9 +32,11 @@ export function FileUpload() {
     currentMonthIndexAtom
   );
   const [processingChunk] = useAtom(processingChunkAtom);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const { rawData, handleFileUpload, isPending } = useFileProcessing();
   const { processData } = useTransactionProcessing();
+  const parsingFile = useAtomValue(parsingFileAtom);
 
   const processedData = processData(analyzedData);
 
@@ -75,6 +85,58 @@ export function FileUpload() {
 
       <FileUploader onFileChange={handleFileUpload} isDisabled={isPending} />
 
+      {rawData.length > 0 && (
+        <Collapsible open={isCollapsed} onOpenChange={setIsCollapsed}>
+          <CollapsibleTrigger>
+            <div className="w-full flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Uploaded Data Preview</h3>
+              <ChevronDown
+                className={`w-4 h-4 ml-2 transition-transform duration-300 ${
+                  isCollapsed ? "rotate-180" : ""
+                }`}
+              />
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent
+            className={cn(
+              isCollapsed && "animate-in fade-in-5",
+              !isCollapsed && "animate-out fade-out-5"
+            )}
+          >
+            <div className="border rounded-lg overflow-x-auto h-[600px] overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    {Object.keys(rawData[0]).map((header) => (
+                      <th
+                        key={header}
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                      >
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {rawData.map((row, index) => (
+                    <tr key={index}>
+                      {Object.values(row).map((value: unknown, cellIndex) => (
+                        <td
+                          key={cellIndex}
+                          className="px-6 py-4 whitespace-nowrap text-sm"
+                        >
+                          {value as string}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
       {processingChunk.total > 0 && (
         <div className="flex flex-col gap-4 w-full text-center">
           <p className="text-xs text-gray-500">
@@ -86,40 +148,12 @@ export function FileUpload() {
           />
         </div>
       )}
-
-      {rawData.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Uploaded Data Preview</h3>
-          <div className="border rounded-lg overflow-x-auto h-[600px] overflow-y-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 sticky top-0">
-                <tr>
-                  {Object.keys(rawData[0]).map((header) => (
-                    <th
-                      key={header}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                    >
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {rawData.map((row, index) => (
-                  <tr key={index}>
-                    {Object.values(row).map((value: unknown, cellIndex) => (
-                      <td
-                        key={cellIndex}
-                        className="px-6 py-4 whitespace-nowrap text-sm"
-                      >
-                        {value as string}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {parsingFile && (
+        <div className="flex flex-col gap-4 w-full text-center">
+          <p className="flex items-center justify-center text-xs text-gray-500 bg-sky-500/10 border border-sky-500/20 p-2 rounded-md">
+            Parsing file before processing
+            <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+          </p>
         </div>
       )}
 
