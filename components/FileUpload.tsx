@@ -53,8 +53,6 @@ export function FileUpload() {
     }
   }, [processingChunk, setCurrentMonthIndex]);
 
-  console.log({ rawData, analyzedData: analyzedData?.transactions });
-
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-2">

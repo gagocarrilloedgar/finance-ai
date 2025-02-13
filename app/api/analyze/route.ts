@@ -104,6 +104,9 @@ export async function POST(req: Request) {
       prompt: `You are a categorization and structuring expert. Categorize the following transactions into the appropriate categories and groups.
 
       Output should have the same length as the input.
+      Use always the starting of the day as the date. or the only date if only one date is present.
+
+      Negative amounts are expenses and positive amounts are earnings.
 
       ### Categories:
       ${categoriesDescription

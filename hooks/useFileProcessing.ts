@@ -102,23 +102,42 @@ export const useFileProcessing = () => {
       const flattenedTransactions = allResults.flat();
       const cleanedTransactions = cleanUPTransactions(flattenedTransactions);
 
-      setAnalyzedData({
-        summary: {
-          totalEarnings: cleanedTransactions.reduce(
-            (sum, t) => (t.type === "EARNING" ? sum + t.amount : sum),
-            0
-          ),
-          totalExpenses: cleanedTransactions.reduce(
-            (sum, t) => (t.type === "EXPENSE" ? sum + t.amount : sum),
-            0
-          ),
-          netAmount: cleanedTransactions.reduce(
-            (sum, t) =>
-              t.type === "EARNING" ? sum + t.amount : sum - t.amount,
-            0
-          )
-        },
-        transactions: cleanedTransactions
+      setAnalyzedData((prevData) => {
+        const existingTransactions = prevData?.transactions || [];
+
+        // Merge and remove duplicates
+        const mergedTransactions = [...existingTransactions];
+        cleanedTransactions.forEach((newTrans) => {
+          const isDuplicate = existingTransactions.some(
+            (existingTrans) =>
+              existingTrans.amount === newTrans.amount &&
+              existingTrans.description === newTrans.description &&
+              existingTrans.date === newTrans.date
+          );
+
+          if (!isDuplicate) {
+            mergedTransactions.push(newTrans);
+          }
+        });
+
+        return {
+          summary: {
+            totalEarnings: mergedTransactions.reduce(
+              (sum, t) => (t.type === "EARNING" ? sum + t.amount : sum),
+              0
+            ),
+            totalExpenses: mergedTransactions.reduce(
+              (sum, t) => (t.type === "EXPENSE" ? sum + t.amount : sum),
+              0
+            ),
+            netAmount: mergedTransactions.reduce(
+              (sum, t) =>
+                t.type === "EARNING" ? sum + t.amount : sum + t.amount,
+              0
+            )
+          },
+          transactions: mergedTransactions
+        };
       });
     },
     onSuccess: () => {
