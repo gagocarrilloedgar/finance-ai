@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Financial Data Analyzer
 
-## Getting Started
+![Project Screenshot](./public/demo.png)
 
-First, run the development server:
+A web application for analyzing financial transactions using AI-powered categorization and visualization.
+
+## Features
+
+- 📁 Upload Excel/PDF bank statements
+- 🤖 AI-powered transaction categorization (OpenAI GPT-4o, Google Gemini)
+- 📅 Date range filtering and month navigation
+- 📊 Interactive financial summaries and charts
+- 🏷️ Automatic transaction tagging and grouping
+- 📱 Responsive UI with data tables and previews
+
+## Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **State Management**: Jotai
+- **UI**: Shadcn/ui + Tailwind CSS
+- **AI Integration**: OpenAI API, Google Gemini API
+- **Data Processing**: xlsx, pdf-parse
+- **Visualization**: React Table, React Charts
+
+## Installation
+
+1. Clone repository:
+
+   ```bash
+   git clone https://github.com/gagocarrilloedgar/finance-ai.git
+   cd finance-ai
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   pnpm install
+   ```
+
+3. Environment variables (create `.env.local`):
+
+   ```env
+   OPENAI_API_KEY=your_openai_key
+   GOOGLE_API_KEY=your_google_api_key
+   ```
+
+4. Run development server:
+   ```bash
+   pnpm run dev
+   ```
+
+## Usage
+
+1. Upload bank statement (Excel/PDF)
+2. View categorized transactions
+3. Use date picker to filter by date range
+4. Expand/collapse transaction categories
+5. Navigate between months using arrow buttons
+
+## Project Structure
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+├── app/
+│ ├── api/ # API routes
+│ │ ├── analyze/ # OpenAI transaction processing
+│ │ └── files/ # PDF processing with Gemini
+├── components/
+│ ├── FileUpload.tsx # Main upload component
+│ ├── TransactionList.tsx # Transaction table
+│ ├── Providers.tsx # Global state providers
+│ ├── ui/ # Shadcn/ui components
+│ └── hooks/ # Custom hooks
+├── store/
+│ └── atoms.ts # Jotai state atoms
+└── lib/
+└── utils.ts # Utility functions
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Key Components
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### `components/FileUpload.tsx`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Handles file upload and processing pipeline
+- Manages date range filtering state
+- Coordinates data flow between UI and hooks
 
-## Learn More
+### `hooks/useFileProcessing.ts`
 
-To learn more about Next.js, take a look at the following resources:
+- Excel/PDF file parsing
+- Chunk processing with progress tracking
+- AI API integration for transaction analysis
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### `hooks/useTransactionProcessing.ts`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Date range filtering
+- Transaction grouping by month
+- Data sorting and formatting
 
-## Deploy on Vercel
+### `app/api/analyze/route.ts`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- OpenAI integration for transaction categorization
+- Schema validation with Zod
+- Response formatting
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+MIT License
