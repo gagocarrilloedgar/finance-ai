@@ -1,14 +1,22 @@
 import { AnalyzedData, Transaction } from "@/store/atoms";
+import { DateRange } from "react-day-picker";
 
 export const useTransactionProcessing = () => {
-  const processData = (data?: AnalyzedData | null) => {
+  const processData = (data: AnalyzedData | null, dateRange?: DateRange) => {
     if (!data) return [];
+
+    const filtered = data.transactions.filter(
+      (t) =>
+        !dateRange?.from ||
+        !dateRange?.to ||
+        (new Date(t.date) >= dateRange.from && new Date(t.date) <= dateRange.to)
+    );
 
     const grouped: {
       [key: string]: { in: Transaction[]; out: Transaction[] };
     } = {};
 
-    data.transactions.forEach((transaction) => {
+    filtered.forEach((transaction) => {
       const transactionDate = new Date(transaction.date);
       const monthKey = `${transactionDate.getFullYear()}-${
         transactionDate.getMonth() + 1

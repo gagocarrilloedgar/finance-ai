@@ -38,7 +38,7 @@ export function FileUpload() {
   const { processData } = useTransactionProcessing();
   const parsingFile = useAtomValue(parsingFileAtom);
 
-  const processedData = processData(analyzedData);
+  const processedData = processData(analyzedData, dateRange);
 
   const handleNextMonth = () => {
     setCurrentMonthIndex((prev) =>
@@ -63,6 +63,10 @@ export function FileUpload() {
     }
   }, [processingChunk, setCurrentMonthIndex]);
 
+  useEffect(() => {
+    setCurrentMonthIndex(0);
+  }, [dateRange, setCurrentMonthIndex]);
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-2">
@@ -71,14 +75,19 @@ export function FileUpload() {
           <DatePickerWithRange
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
+            onClear={() => setDateRange(undefined)}
             className="[&>div]:w-[300px]"
           />
         </div>
-        {dateRange?.from && dateRange?.to && (
+        {dateRange?.from && dateRange?.to ? (
           <p className="text-sm text-muted-foreground">
             Showing transactions from{" "}
-            {dateRange.from.toLocaleDateString("en-US")} to{" "}
-            {dateRange.to.toLocaleDateString("en-US")}
+            {new Date(dateRange.from).toLocaleDateString("en-US")} to{" "}
+            {new Date(dateRange.to).toLocaleDateString("en-US")}
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Showing all available transactions
           </p>
         )}
       </div>

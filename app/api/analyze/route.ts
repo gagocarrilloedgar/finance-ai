@@ -124,7 +124,6 @@ export async function POST(req: Request) {
     console.error("Error processing chunk:", error);
   }
 
-  // Calculate summary
   const summary = {
     totalEarnings: allTransactions
       .filter((t) => t.type === "EARNING")
