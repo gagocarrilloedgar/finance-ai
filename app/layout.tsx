@@ -27,6 +27,25 @@ export default function RootLayout({
           <Analytics />
           <Toaster />
         </Providers>
+        <footer className="text-center text-sm text-muted-foreground">
+          <p>
+            Made with ❤️ by{" "}
+            <a
+              href="https://github.com/gagocarrilloedgar"
+              className="underline"
+            >
+              Edgar Gago Carrillo
+            </a>
+          </p>
+          <p>
+            <a
+              href="https://github.com/gagocarrilloedgar/finance-ai"
+              className="underline"
+            >
+              View the source code
+            </a>
+          </p>
+        </footer>
       </body>
     </html>
   );
