@@ -15,7 +15,8 @@ export function FileUploader({ onFileChange, isDisabled }: FileUploaderProps) {
         <div className="flex flex-col items-center justify-center pt-5 pb-6">
           <FileUpIcon className="w-6 h-6 mb-2 text-gray-500" />
           <p className="mb-2 text-sm text-gray-500">
-            <span className="font-semibold">Click to upload</span> or drag and drop
+            <span className="font-semibold">Click to upload</span> or drag and
+            drop
           </p>
           <p className="text-xs text-gray-500">Excel files only</p>
         </div>
@@ -23,7 +24,7 @@ export function FileUploader({ onFileChange, isDisabled }: FileUploaderProps) {
           id="dropzone-file"
           type="file"
           className="hidden"
-          accept=".xlsx,.xls,.csv,.pdf"
+          accept=".xlsx,.csv,.pdf"
           onChange={onFileChange}
           disabled={isDisabled}
         />

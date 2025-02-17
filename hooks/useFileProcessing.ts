@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { useAtom, useSetAtom } from "jotai";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import {
   rawDataAtom,
   Transaction
 } from "@/store/atoms";
+import Papa from "papaparse";
 
 export const useFileProcessing = () => {
   const [rawData, setRawData] = useAtom(rawDataAtom) as [
@@ -20,29 +21,57 @@ export const useFileProcessing = () => {
   const setProcessingChunk = useSetAtom(processingChunkAtom);
   const setParsingFile = useSetAtom(parsingFileAtom);
 
-  const readExcelFile = (file: File): Promise<any[]> => {
+  const readFile = async (file: File): Promise<any[]> => {
+    const reader = new FileReader();
     return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const data = e.target?.result;
-          const workbook = XLSX.read(data, {
-            type: "binary",
-            cellDates: true,
-            dateNF: "yyyy-mm-dd"
-          });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-            raw: false
-          });
+          if (!data) throw new Error("No file data found");
+
+          // Handle CSV files
+          if (file.type === "text/csv") {
+            const results = Papa.parse(data as string, { header: true });
+            resolve(results.data);
+            return;
+          }
+
+          const workbook = new ExcelJS.Workbook();
+          const buffer = data as ArrayBuffer;
+
+          if (file.name.endsWith(".xls")) {
+            await workbook.xlsx.load(buffer);
+          } else {
+            await workbook.xlsx.load(buffer);
+          }
+
+          const worksheet = workbook.worksheets[0];
+          const jsonData = worksheet
+            .getSheetValues()
+            .slice(1)
+            .map((row) => {
+              const obj: any = {};
+              worksheet.columns.forEach((column, index) => {
+                obj[column.header?.toString() || `column${index}`] = (
+                  row as any[]
+                )[index + 1];
+              });
+              return obj;
+            });
+
           resolve(jsonData);
         } catch (error) {
           reject(error);
         }
       };
       reader.onerror = (error) => reject(error);
-      reader.readAsBinaryString(file);
+
+      // Read file based on type
+      if (file.type === "text/csv") {
+        reader.readAsText(file);
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
     });
   };
 
@@ -65,7 +94,7 @@ export const useFileProcessing = () => {
         data = respData;
         setParsingFile(false);
       } else {
-        data = await readExcelFile(file);
+        data = await readFile(file);
         setRawData(data);
       }
 
