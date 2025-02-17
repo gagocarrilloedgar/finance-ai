@@ -1,6 +1,7 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { openai } from "@ai-sdk/openai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 
 import { groups, categoriesDescription, types } from "@/store/atoms";
 
@@ -15,21 +16,36 @@ const transactionSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const { data } = await req.json();
+  const { data, model: modelType = "openai", openaiApiKey } = await req.json();
 
   let allTransactions: z.infer<typeof transactionSchema>[] = [];
 
+  const apiKey = openaiApiKey || process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    return new Response("No API key provided", { status: 400 });
+  }
+
+  const openai = createOpenAI({
+    apiKey
+  });
+
   try {
+    const model =
+      modelType === "gemini"
+        ? google("gemini-1.5-flash")
+        : openai("gpt-4o-mini");
+
     // Step 3: Analyze and categorize the ordered data
     const { object: result } = await generateObject({
-      model: openai("gpt-4o-mini"),
+      model,
       schema: z.object({
         transactions: z.array(transactionSchema)
       }),
       prompt: `You are a categorization and structuring expert. Categorize the following transactions into the appropriate categories and groups.
 
-      Output should have the same length as the input.
-      Use always the starting of the day as the date. or the only date if only one date is present.
+      Output has to have the same length as the input.
+      Use always the starting of the day as the date. or the only date if only one date is present. If they are different, use always the starting of the day.
 
       Negative amounts are expenses and positive amounts are earnings.
 

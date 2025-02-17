@@ -22,6 +22,14 @@ export const groups = [
   }
 ];
 
+export const providerOptions = ["openai", "gemini"] as const;
+
+export const providersAtom = atomWithStorage<string>("providers", "gemini");
+export const openaiApiKeyAtom = atomWithStorage<string | undefined>(
+  "openaiApiKey",
+  undefined
+);
+
 export const defaultCategories = [
   "Income",
   "Housing",

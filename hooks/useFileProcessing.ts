@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import ExcelJS from "exceljs";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -8,7 +8,9 @@ import {
   parsingFileAtom,
   processingChunkAtom,
   rawDataAtom,
-  Transaction
+  Transaction,
+  providersAtom,
+  openaiApiKeyAtom
 } from "@/store/atoms";
 import Papa from "papaparse";
 
@@ -20,6 +22,8 @@ export const useFileProcessing = () => {
   const setAnalyzedData = useSetAtom(analyzedDataAtom);
   const setProcessingChunk = useSetAtom(processingChunkAtom);
   const setParsingFile = useSetAtom(parsingFileAtom);
+  const provider = useAtomValue(providersAtom);
+  const openaiApiKey = useAtomValue(openaiApiKeyAtom);
 
   const readFile = async (file: File): Promise<any[]> => {
     const reader = new FileReader();
@@ -77,6 +81,11 @@ export const useFileProcessing = () => {
 
   const { mutate: handleFileUpload, isPending } = useMutation({
     mutationFn: async (event: React.ChangeEvent<HTMLInputElement>) => {
+      if (window.location.hostname !== "localhost" && !openaiApiKey) {
+        toast.error("OpenAI without apikey is not available yet");
+        return;
+      }
+
       const file = event.target.files?.[0];
       if (!file) throw new Error("No file uploaded");
       let data: any[] = [];
@@ -116,7 +125,7 @@ export const useFileProcessing = () => {
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ data: chunk })
+          body: JSON.stringify({ data: chunk, model: provider, openaiApiKey })
         });
         if (!response.ok) {
           throw new Error("Failed to analyze data");
@@ -196,6 +205,7 @@ export const useFileProcessing = () => {
 };
 
 const cleanUPTransactions = (allTransactions: Transaction[]) => {
+  console.log({ allTransactions });
   // Remove all prefunding (description contains with "Prefunding") transactions
   const filteredData = allTransactions.filter(
     (t) => !t.description?.toString().toLowerCase().includes("prefunding")
@@ -215,7 +225,6 @@ const cleanUPTransactions = (allTransactions: Transaction[]) => {
     )
   );
 
-  // Add the tag "cancelled" to the cancelledData
   cancelledData?.forEach((t) => {
     t.tags = ["cancelled"];
   });
