@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   const apiKey = openaiApiKey || process.env.OPENAI_API_KEY;
 
-  if (!apiKey) {
+  if (!apiKey && modelType === "openai") {
     return new Response("No API key provided", { status: 400 });
   }
 
