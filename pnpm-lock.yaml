@@ -147,9 +147,6 @@ importers:
       postcss:
         specifier: ^8
         version: 8.5.1
-      prisma:
-        specifier: ^6.3.1
-        version: 6.3.1(typescript@5.7.3)
       tailwindcss:
         specifier: ^3.4.1
         version: 3.4.17
@@ -2889,9 +2886,11 @@ snapshots:
       prisma: 6.3.1(typescript@5.7.3)
       typescript: 5.7.3
 
-  '@prisma/debug@6.3.1': {}
+  '@prisma/debug@6.3.1':
+    optional: true
 
-  '@prisma/engines-version@6.3.0-17.acc0b9dd43eb689cbd20c9470515d719db10d0b0': {}
+  '@prisma/engines-version@6.3.0-17.acc0b9dd43eb689cbd20c9470515d719db10d0b0':
+    optional: true
 
   '@prisma/engines@6.3.1':
     dependencies:
@@ -2899,16 +2898,19 @@ snapshots:
       '@prisma/engines-version': 6.3.0-17.acc0b9dd43eb689cbd20c9470515d719db10d0b0
       '@prisma/fetch-engine': 6.3.1
       '@prisma/get-platform': 6.3.1
+    optional: true
 
   '@prisma/fetch-engine@6.3.1':
     dependencies:
       '@prisma/debug': 6.3.1
       '@prisma/engines-version': 6.3.0-17.acc0b9dd43eb689cbd20c9470515d719db10d0b0
       '@prisma/get-platform': 6.3.1
+    optional: true
 
   '@prisma/get-platform@6.3.1':
     dependencies:
       '@prisma/debug': 6.3.1
+    optional: true
 
   '@radix-ui/number@1.1.0': {}
 
@@ -4647,6 +4649,7 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
       typescript: 5.7.3
+    optional: true
 
   prop-types@15.8.1:
     dependencies:

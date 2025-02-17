@@ -4,6 +4,18 @@
 
 A web application for analyzing financial transactions using AI-powered categorization and visualization.
 
+## Roadmap
+
+- [ ] Remove and edit transactions
+- [ ] Model selector
+- [ ] DB sync (with supabase)
+- [ ] Rag store with raw data for long term memory and categorization improvements
+- [ ] Add support for account tagging (where the transactions are coming from)
+- [ ] Add support for wealth data import (Stocks, Bonds, Crypto, etc.)
+- [ ] More data visualization options (Liftime evolution, net worth evolution, most spent categories, etc.)
+
+
+
 ## Features
 
 - 📁 Upload Excel/PDF bank statements
