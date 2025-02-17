@@ -81,7 +81,11 @@ export const useFileProcessing = () => {
 
   const { mutate: handleFileUpload, isPending } = useMutation({
     mutationFn: async (event: React.ChangeEvent<HTMLInputElement>) => {
-      if (window.location.hostname !== "localhost" && !openaiApiKey) {
+      if (
+        window.location.hostname !== "localhost" &&
+        !openaiApiKey &&
+        provider === "openai"
+      ) {
         toast.error("OpenAI without apikey is not available yet");
         return;
       }
